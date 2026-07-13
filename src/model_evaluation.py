@@ -1,6 +1,10 @@
 
 import numpy as np
 import pandas as pd
+import yaml
+from dvclive.live import Live
+
+
 
 import pickle
 import json
@@ -28,6 +32,24 @@ file_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
+
+def load_params(congig_path:str)->dict:
+    """Load parameters from a YAML file."""
+    try:
+        with open(congig_path, 'r') as file:
+            params = yaml.safe_load(file)
+        logger.debug('Parameters loaded from %s', congig_path)
+        return params
+    except FileNotFoundError as e:
+        logger.error('Configuration file not found: %s', e)
+        raise
+    except yaml.YAMLError as e:
+        logger.error('Error parsing the YAML file: %s', e)
+        raise
+    except Exception as e:
+        logger.error('Unexpected error occurred while loading parameters: %s', e)
+        raise
 
 def load_data(file_path: str) -> pd.DataFrame:
     """Load data from a CSV file."""
@@ -99,6 +121,7 @@ def save_metrics(metrics: dict, output_path: str):
 def main():
     """Main function to load model, evaluate it, and save metrics."""
     try:
+        params = load_params('params.yaml')
         # model_path = 'models/trained_model.pkl'
         # test_data_path = 'data/test_data.csv'
         metrics_output_path = 'reports/metrics.json'
@@ -117,6 +140,13 @@ def main():
 
         # Evaluate the model
         metrics = evaluate_model(model, X_test, y_test)
+        #experiment tracking using dvclive
+        
+        with Live(save_dvc_exp=True) as live:
+            live.log_metric("accuracy", metrics['accuracy'])
+            live.log_metric("precision", metrics['precision'])
+            live.log_metric("recall", metrics['recall'])
+            live.log_params(params)
 
         # Save the evaluation metrics
         save_metrics(metrics, metrics_output_path)
