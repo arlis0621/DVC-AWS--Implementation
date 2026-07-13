@@ -1,5 +1,6 @@
 
 import os
+import yaml
 
 import numpy as np
 import pandas as pd
@@ -48,6 +49,23 @@ def load_data(file_path: str) -> pd.DataFrame:
         raise
     except Exception as e:
         logger.error('Unexpected error occurred while loading the data: %s', e)
+        raise
+    
+def load_params(congig_path:str)->dict:
+    """Load parameters from a YAML file."""
+    try:
+        with open(congig_path, 'r') as file:
+            params = yaml.safe_load(file)
+        logger.debug('Parameters loaded from %s', congig_path)
+        return params
+    except FileNotFoundError as e:
+        logger.error('Configuration file not found: %s', e)
+        raise
+    except yaml.YAMLError as e:
+        logger.error('Error parsing the YAML file: %s', e)
+        raise
+    except Exception as e:
+        logger.error('Unexpected error occurred while loading parameters: %s', e)
         raise
 
 def train_model(X_train: np.ndarray, y_train: np.ndarray, params: dict) -> RandomForestClassifier:
@@ -101,7 +119,9 @@ def save_model(model, file_path: str) -> None:
 
 def main():
     try:
-        params = {'n_estimators': 25, 'random_state': 2}
+        
+        params = load_params('params.yaml')['model_training']
+        
         train_data = load_data('./data/processed/train_tfidf.csv')
         X_train = train_data.iloc[:, :-1].to_numpy()
         y_train = train_data.iloc[:, -1].to_numpy()
